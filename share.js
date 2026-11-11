@@ -185,7 +185,7 @@ $('searchBtn').onclick=()=>{openSheet('搜索照片','按文件名、日期、�
 
 async function init(){
  try{
-  const response=await fetch('./gallery.json');if(!response.ok)throw Error('无法读取照片清单');
+  const response=await fetch('./gallery.json?v=8d1499fa7788');if(!response.ok)throw Error('无法读取照片清单');
   state.items=await response.json();updateStats();
  }catch(e){mapMessage(e.message);return;}
  try{await initializeAMap();if(state.items.some(validGPS))await fitAll();}
