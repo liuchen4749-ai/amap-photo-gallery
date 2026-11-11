@@ -5,137 +5,39 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
 const state={items:[],search:'',manualId:null,activeGroup:[],zoom:4,center:{lat:35.7,lng:105.3}};
-let map;
-const mapCoord = item => validGPS(item) ? [item.lng, item.lat] : null;
-
-function screenPoint(lat, lng) {
-  return map ? map.latLngToContainerPoint([lat, lng]) : {x: -9999, y: -9999};
+let amap=null,satellite=null,roadNet=null,standardLayer=null,satelliteMode=true,roadNetVisible=true,mapReady=false;
+const mapCoord=i=>validGPS(i)?[i.lng,i.lat]:null;
+function screenPoint(lat,lng){if(!amap)return {x:-9999,y:-9999};const p=amap.lngLatToContainer([lng,lat]);return {x:p.x,y:p.y};}
+function setZoom(z){if(amap)amap.setZoom(clamp(z,2,19));}
+function renderMap(){renderMarkers();}
+function mapMessage(message){$('mapErr').textContent=message;$('mapErr').classList.remove('hide');}
+async function loadScript(url){return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=url;s.onload=resolve;s.onerror=()=>reject(Error('地图脚本加载失败，请检查网络'));document.head.appendChild(s);});}
+async function initializeAMap(){
+ const response=await fetch("https://amap-photo-gallery-map-proxy.tart-sage-5381.chatgpt.site/amap-config.json");if(!response.ok)throw Error('在线底图尚未配置；可继续浏览照片。');
+ const config=await response.json();if(!config.key||!config.serviceHost)throw Error('在线底图尚未配置；可继续浏览照片。');window._AMapSecurityConfig={serviceHost:config.serviceHost};
+ await Promise.race([loadScript('https://webapi.amap.com/maps?v=2.0&key='+encodeURIComponent(config.key)),sleep(20000).then(()=>{throw Error('高德加载超时，请检查网络后刷新');})]);
+ if(!window.AMap)throw Error('高德接口未能初始化');
+ satellite=new AMap.TileLayer.Satellite();roadNet=new AMap.TileLayer.RoadNet();standardLayer=new AMap.TileLayer();
+ amap=new AMap.Map('amap',{viewMode:'2D',zoom:4,center:[105.3,35.7],layers:[satellite,roadNet],resizeEnable:true,animateEnable:false,zoomEnable:true,dragEnable:true});
+ const sync=()=>{const c=amap.getCenter();state.center={lat:c.lat,lng:c.lng};state.zoom=amap.getZoom();renderMarkers();};
+ amap.on('mapmove',sync);amap.on('zoomchange',sync);amap.on('resize',sync);
+ amap.on('complete',()=>{mapReady=true;document.body.dataset.mapReady='true';if(!state.coordinateError)$('mapErr').classList.add('hide');sync();});
+ function applyMapLayers(){amap.setLayers(satelliteMode?(roadNetVisible?[satellite,roadNet]:[satellite]):[standardLayer]);if(satelliteMode&&roadNetVisible)roadNet.show();else roadNet.hide();amap.setFeatures(satelliteMode&&!roadNetVisible?[]:['bg','point','road','building']);$('modeBtn').textContent=satelliteMode?'标准图':'卫星图';$('roadBtn').classList.toggle('hide',!satelliteMode);$('roadBtn').textContent=roadNetVisible?'路网开':'路网关';$('roadBtn').setAttribute('aria-pressed',String(roadNetVisible));}
+ $('modeBtn').onclick=()=>{satelliteMode=!satelliteMode;applyMapLayers();};
+ $('roadBtn').onclick=()=>{roadNetVisible=!roadNetVisible;applyMapLayers();};
 }
-
-function setZoom(zoom) {
-  map?.setZoom(clamp(zoom, 2, 19));
-}
-
-function renderMap() {
-  renderMarkers();
-}
-
-function mapMessage(message) {
-  $('mapErr').textContent = message;
-  $('mapErr').classList.remove('hide');
-}
-
-function initializePublicMap() {
-  if (!window.L) throw new Error('地图暂时无法加载，可以继续浏览照片。');
-  map = L.map('amap', {
-    zoomControl: false,
-    attributionControl: false,
-    minZoom: 2,
-    maxZoom: 19,
-    zoomAnimation: false,
-    fadeAnimation: false
-  });
-
-  const eox = 'https://tiles.maps.eox.at/wmts/1.0.0/';
-  const satellite = L.tileLayer(`${eox}s2cloudless_3857/default/g/{z}/{y}/{x}.jpg`, {
-    maxNativeZoom: 14,
-    maxZoom: 19
-  });
-  const roads = L.tileLayer(`${eox}overlay_bright_3857/default/g/{z}/{y}/{x}.png`, {
-    maxNativeZoom: 14,
-    maxZoom: 19,
-    zIndex: 2
-  });
-  const street = L.tileLayer(`${eox}osm_3857/default/g/{z}/{y}/{x}.jpg`, {
-    maxNativeZoom: 14,
-    maxZoom: 19
-  });
-  const imageryCredit = '<a href="https://maps.eox.at/" target="_blank" rel="noopener">EOX::Maps</a> · <a href="https://cloudless.eox.at/" target="_blank" rel="noopener">EOxCloudless</a>（含 2016 Copernicus Sentinel 数据） · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>';
-  const streetCredit = '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a> · <a href="https://maps.eox.at/" target="_blank" rel="noopener">EOX</a> / <a href="https://github.com/mapserver/basemaps" target="_blank" rel="noopener">MapServer</a>';
-  let satelliteMode = true;
-  let roadsVisible = true;
-  let satelliteLoaded = false;
-
-  function applyLayers() {
-    if (satelliteMode) {
-      street.remove();
-      satellite.addTo(map);
-      if (roadsVisible) roads.addTo(map);
-      else roads.remove();
-    } else {
-      satellite.remove();
-      roads.remove();
-      street.addTo(map);
-    }
-    $('modeBtn').textContent = satelliteMode ? '标准图' : '卫星图';
-    $('roadBtn').classList.toggle('hide', !satelliteMode);
-    $('roadBtn').textContent = roadsVisible ? '路网开' : '路网关';
-    $('roadBtn').setAttribute('aria-pressed', String(roadsVisible));
-    $('credit').innerHTML = satelliteMode
-      ? [imageryCredit, ...(roadsVisible ? [streetCredit] : [])].join('<br>')
-      : streetCredit;
-  }
-
-  satellite.on('tileload', () => { satelliteLoaded = true; });
-  satellite.on('load', () => {
-    if (!satelliteLoaded && satelliteMode) {
-      satelliteMode = false;
-      applyLayers();
-      toast('卫星影像暂时无法加载，已切换到标准图。');
-    }
-  });
-  $('modeBtn').onclick = () => {
-    satelliteMode = !satelliteMode;
-    applyLayers();
-  };
-  $('roadBtn').onclick = () => {
-    roadsVisible = !roadsVisible;
-    applyLayers();
-  };
-  map.on('move zoom resize', () => {
-    if (!Number.isFinite(map.getZoom())) return;
-    state.zoom = map.getZoom();
-    renderMarkers();
-  });
-  map.setView([35.7, 105.3], 4);
-  fitAll();
-  applyLayers();
-  document.body.dataset.mapReady = 'true';
-}
-
-function fitAll() {
-  if (!map) return;
-  const points = state.items.filter(validGPS).map(item => [item.lat, item.lng]);
-  if (!points.length) return;
-  map.fitBounds(points, {
-    paddingTopLeft: [45, 115],
-    paddingBottomRight: [55, 115],
-    maxZoom: 18,
-    animate: false
-  });
-  renderMarkers();
-}
-
-function updateAmapLink(item) {
-  const link = $('viewerAmap');
-  link.hidden = !validGPS(item);
-  if (link.hidden) {
-    link.removeAttribute('href');
-    return;
-  }
-  const url = new URL('https://uri.amap.com/marker');
-  url.search = new URLSearchParams({
-    position: `${item.lng},${item.lat}`,
-    name: item.name,
-    coordinate: 'wgs84',
-    callnative: '0',
-    src: 'photo-gallery'
-  });
-  link.href = url.href;
-}
-
 function renderMarkers(){let layer=$('markers');layer.textContent='';let points=[];const w=$('map').clientWidth,h=$('map').clientHeight;for(let item of state.items){if(!validGPS(item))continue;if(state.search&&!matchItem(item,state.search))continue;const coords=mapCoord(item);if(!coords)continue;const p=screenPoint(coords[1],coords[0]);if(p.x< -65||p.y< -65||p.x>w+65||p.y>h+65)continue;points.push({item,p});}points.sort((a,b)=>a.p.x-b.p.x);let groups=[];for(let pt of points){let found=groups.find(g=>Math.abs(g.x-pt.p.x)<54&&Math.abs(g.y-pt.p.y)<54);if(found){found.items.push(pt.item);found.x=(found.x*(found.items.length-1)+pt.p.x)/found.items.length;found.y=(found.y*(found.items.length-1)+pt.p.y)/found.items.length;}else{groups.push({x:pt.p.x,y:pt.p.y,items:[pt.item]});}}let frag=document.createDocumentFragment();for(let g of groups){let b=document.createElement('button');b.className='mark'+(g.items[0].thumb?'':' noimage');b.style.left=g.x+'px';b.style.top=g.y+'px';b.setAttribute('aria-label','查看此处 '+g.items.length+' 张照片');let src=g.items[0].thumb;if(src){let img=document.createElement('img');img.src=src;img.alt='';b.appendChild(img);}else b.textContent='▧';if(g.items.length>1){let count=document.createElement('span');count.className='count';count.textContent=g.items.length;b.appendChild(count);}b.addEventListener('pointerdown',e=>e.stopPropagation());b.addEventListener('click',e=>{e.stopPropagation();if(state.manualId)return;openGroup(g.items)});frag.appendChild(b);}layer.appendChild(frag);}
 function validGPS(i){return Number.isFinite(i.lat)&&Number.isFinite(i.lng)&&Math.abs(i.lat)<=90&&Math.abs(i.lng)<=180&&!(i.lat===0&&i.lng===0);}
+async function fitAll(){
+ if(!amap)return;
+ try{const items=state.items.filter(i=>mapCoord(i));if(!items.length){renderMap();return;}
+  const positions=items.map(mapCoord);if(positions.length===1){amap.setZoomAndCenter(16,positions[0]);return;}
+  const xs=positions.map(p=>p[0]),ys=positions.map(p=>p[1]);const lo=[Math.min(...xs),Math.min(...ys)],hi=[Math.max(...xs),Math.max(...ys)];
+  if(Math.abs(lo[0]-hi[0])+Math.abs(lo[1]-hi[1])<0.0001)amap.setZoomAndCenter(16,lo);
+  else amap.setBounds(new AMap.Bounds(lo,hi),true,[150,80,140,80],18);
+  renderMarkers();
+ }catch(e){state.coordinateError=e.message;mapMessage('GPS 已保留，坐标转换未完成：'+e.message+'。可稍后点击「查看全部位置」重试。');}
+}
 window.addEventListener('resize',renderMap);
 function openSheet(title,subtitle,markup,after){closePhotoBand(false);$('sheetTitle').textContent=title;$('sheetSub').textContent=subtitle||'';$('sheetBody').innerHTML=markup;$('shade').classList.remove('hide');$('sheet').classList.remove('hide');if(after)after();}
 function closeSheet(){$('shade').classList.add('hide');$('sheet').classList.add('hide');$('sheetBody').textContent='';}
@@ -209,6 +111,24 @@ function zoomPhoto(scale,clientX,clientY){
  const x=clientX==null?0:clientX-rect.left-rect.width/2,y=clientY==null?0:clientY-rect.top-rect.height/2;
  const ratio=next/photoView.scale;photoView.x=x-(x-photoView.x)*ratio;photoView.y=y-(y-photoView.y)*ratio;photoView.scale=next;updatePhotoTransform();
 }
+function updateAmapLink(item) {
+  const link = $('viewerAmap');
+  link.hidden = !validGPS(item);
+  if (link.hidden) {
+    link.removeAttribute('href');
+    return;
+  }
+  const url = new URL('https://uri.amap.com/marker');
+  url.search = new URLSearchParams({
+    position: `${item.lng},${item.lat}`,
+    name: item.name,
+    coordinate: 'gaode',
+    callnative: '0',
+    src: 'photo-gallery'
+  });
+  link.href = url.href;
+}
+
 function viewItem(item){
  updateAmapLink(item);
  const source=item.large||item.thumb;if(!source)return toast('这张照片暂时无法预览');
@@ -268,7 +188,7 @@ async function init(){
   const response=await fetch('./gallery.json');if(!response.ok)throw Error('无法读取照片清单');
   state.items=await response.json();updateStats();
  }catch(e){mapMessage(e.message);return;}
- try{initializePublicMap();}
+ try{await initializeAMap();if(state.items.some(validGPS))await fitAll();}
  catch(e){mapMessage(e.message);$('controls').classList.add('hide');librarySheet();}
 }
 init();

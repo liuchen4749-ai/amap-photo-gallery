@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<link rel="stylesheet" href="./leaflet/leaflet.css">
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no"/>
 <meta name="theme-color" content="#111a20"/>
@@ -48,21 +47,15 @@
 #roadBtn{width:62px;font-size:12px}#roadBtn[aria-pressed="false"]{color:#b9ee69}
 @media(max-width:700px){#photoBand{top:22vh;height:62vh;left:5px;right:5px;border-radius:15px}.band-head{padding:13px 15px 3px}.band-head h2{font-size:14px}.band-head p{font-size:10px}#photoBandRail{gap:14px;padding:15px 15px 22px}.band-card{max-width:85vw}#viewerFrame{width:95vw;height:82vh}#viewerToolbar{padding:9px;flex-wrap:wrap;gap:7px}#viewerTitle{width:100%}.viewer-tools{margin-left:auto}#viewerHint{font-size:10px}}
 
-#empty,#manualbar,#crosshair{display:none!important}#viewerSaveNote[hidden]{display:none}
-#amap.leaflet-container{background:#182c38;font:inherit}
-#credit{max-width:min(72vw,600px);pointer-events:auto;line-height:1.4;text-align:right;white-space:normal}
-#credit a{color:#f0f6fa}
-#viewerAmap{font-size:11px;color:#b9ee69;padding:5px;text-decoration:none;white-space:nowrap}
-#viewerAmap:hover{text-decoration:underline}
-@media(max-width:500px){#credit{font-size:8px}#viewerAmap{font-size:10px}}
+#empty,#manualbar,#crosshair{display:none!important}#viewerSaveNote[hidden]{display:none}#viewerAmap{font-size:11px;color:#b9ee69;padding:5px;text-decoration:none;white-space:nowrap}#viewerAmap:hover{text-decoration:underline}
 </style>
 </head>
 <body>
-<div id="map" aria-label="照片点位地图"><div id="amap"></div></div><div id="markers"></div><div id="mapErr" class="hide">卫星影像暂时无法加载，请检查网络。<br/>仍可从「照片图库」浏览照片。</div>
-<div id="topbar"><div class="topline"><div class="identity"><div class="logo">⌖</div><div><div class="brand">足迹 · 照片地图</div><div class="caption">PHOTO MAP · SHARED LIBRARY</div></div></div><div class="topactions"><button class="round" id="searchBtn" aria-label="搜索">⌕</button></div></div><div class="status"><span class="dot"></span><span id="statText">本机私密图库 · 0 张照片</span></div></div>
+<div id="map" aria-label="高德地图"><div id="amap"></div></div><div id="markers"></div><div id="mapErr" class="hide">卫星影像暂时无法加载，请检查网络。<br/>仍可从「照片图库」浏览照片。</div>
+<div id="topbar"><div class="topline"><div class="identity"><div class="logo">⌖</div><div><div class="brand">足迹 · 高德照片图库</div><div class="caption">AMAP · SHARED PHOTO LIBRARY</div></div></div><div class="topactions"><button class="round" id="searchBtn" aria-label="搜索">⌕</button></div></div><div class="status"><span class="dot"></span><span id="statText">本机私密图库 · 0 张照片</span></div></div>
 <div id="controls"><button class="ctl small" id="roadBtn" title="显示或隐藏卫星图上的道路与地名" aria-pressed="true">路网开</button><button class="ctl small" id="modeBtn" title="切换卫星图与标准地图">标准图</button><button class="ctl small" id="fitBtn" title="查看全部位置">◎</button><button class="ctl" id="zin" title="放大">＋</button><button class="ctl" id="zout" title="缩小">−</button></div>
 <div id="empty"><div class="welcome-icon">✦</div><h1>让照片回到拍摄地点</h1><p>把三星手机 DCIM/Camera 中的原始照片复制到电脑，再选择照片或 ZIP。自动读取 GPS，按拍摄地点整理到高德地图。</p><div class="tipline"><span class="tips-accent">✓</span> 本机保存　<span class="tips-accent">✓</span> 原图不上传　<span class="tips-accent">✓</span> 可备份图库</div></div>
-<div id="credit">只读分享版</div>
+<div id="credit">高德地图 · 只读分享版</div>
 <div id="bottomdock"><button class="btn outline" id="libraryBtn">▦　照片图库 <span id="badgeN">0</span></button></div>
 <div id="crosshair" class="hide">⌖</div><div id="manualbar" class="manualbar hide"><p id="manualText">拖动地图，将十字准星移动到拍摄地点。</p><div class="row"><button class="btn primary" id="useCenter">✓ 使用准星位置</button><button class="btn" id="cancelManual">取消</button></div></div>
 <div id="shade" class="hide"></div><section id="sheet" class="sheet hide" aria-modal="true" role="dialog"><div class="handle"></div><div class="sheet-head"><div><h2 id="sheetTitle">导入照片</h2><div class="sub" id="sheetSub">直接使用本机照片</div></div><button id="closeSheet" class="xbtn">×</button></div><div class="sheet-body" id="sheetBody"></div></section>
@@ -87,7 +80,6 @@
 </div>
 
 <div id="toast" class="hide" role="status"></div><div id="loading" class="hide"><span class="spin"></span><div id="loadingText">正在解析照片…</div></div>
-<script src="./leaflet/leaflet.js" defer></script>
 <script src="./share.js" defer></script>
 </body>
 </html>
