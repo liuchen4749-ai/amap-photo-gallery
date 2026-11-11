@@ -13,8 +13,8 @@ function renderMap(){renderMarkers();}
 function mapMessage(message){$('mapErr').textContent=message;$('mapErr').classList.remove('hide');}
 async function loadScript(url){return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=url;s.onload=resolve;s.onerror=()=>reject(Error('地图脚本加载失败，请检查网络'));document.head.appendChild(s);});}
 async function initializeAMap(){
- const response=await fetch("https://amap-photo-gallery-map-proxy.tart-sage-5381.chatgpt.site/amap-config.json");if(!response.ok)throw Error('在线底图尚未配置；可继续浏览照片。');
- const config=await response.json();if(!config.key||!config.serviceHost)throw Error('在线底图尚未配置；可继续浏览照片。');window._AMapSecurityConfig={serviceHost:config.serviceHost};
+ const config={"key":"271a4a50b058fe30f0a670013781de01","serviceHost":"https://amap-photo-gallery-map-proxy.tart-sage-5381.chatgpt.site/_AMapService"};
+ window._AMapSecurityConfig={serviceHost:config.serviceHost};
  await Promise.race([loadScript('https://webapi.amap.com/maps?v=2.0&key='+encodeURIComponent(config.key)),sleep(20000).then(()=>{throw Error('高德加载超时，请检查网络后刷新');})]);
  if(!window.AMap)throw Error('高德接口未能初始化');
  satellite=new AMap.TileLayer.Satellite();roadNet=new AMap.TileLayer.RoadNet();standardLayer=new AMap.TileLayer();
